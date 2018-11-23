@@ -44,25 +44,29 @@ app.post('/api/signup', (req, res) => {
 
 app.post('/api/checkauth', (req, res) => {
 	const {user} = req.body;
-	Users.findById(user.user_id).then(data => {
-		let verify = data.verifyJWT(user.token);
-		if (verify.email === data.email) {
-			res.json(
-				data.toAuthJSON()
-			)
-		}
-	})
+	if(user.user_id) {
+		Users.findById(user.user_id).then(data => {
+			let verify = data.verifyJWT(user.token);
+			if (verify.email === data.email) {
+				res.json(
+					data.toAuthJSON()
+				)
+			}
+		}, () => res.send({token: ''}))
+	} else {
+			res.send({token: ''})
+	}
 })
 
 // WORK WITH COLLECTIONS
 
 app.post('/api/addnewcollection', (req, res) => {
 	const {data} = req.body;
-	console.log(data)
 	Users.findOneAndUpdate({_id: data.user_id}, 
 		{$push: {
 			collections: {
 				collection_name: data.collection_name,
+				last_photo_url: '',
 				collection_photos: []
 			}}}, (err, item) => {
 				if (err)
@@ -74,11 +78,15 @@ app.post('/api/addnewcollection', (req, res) => {
 
 app.post('/api/addtocollection', (req, res) => {
 	const {data} = req.body;
-	Users.updateOne({_id: data.user_id, 'collections.collection_name': data.collection_name}, {$push: {'collections.$.collection_photos': data.photo_id}},
+	Users.updateOne({_id: data.user_id, 'collections.collection_name': data.collection_name}, 
+	{$push: 
+		{'collections.$.collection_photos': data.photo_id}, 
+		'collections.$.last_photo_url': data.last_photo_url},
 		(err) => {
 			if(err) {
 				console.log(err)
-			}
+			};
+			res.send('Collection updated')
 	})
 })
 
