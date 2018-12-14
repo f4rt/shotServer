@@ -7,9 +7,16 @@ const usersSchema = new Schema({
 	firstname: {type: String, required: true, lowercase: true},
 	surname: {type: String, required: true, lowercase: true},
 	email: {type: String, required: true, lowercase: true},
+	profileBigPicture: {type: String, default: ''},
 	passwordHash: {type: String, required: true},
 	liked_photos: {type: Array, default: []},
-	collections: {type: Array, default: []}
+	collections: {type: Array, default: []},
+	counts: {
+		photos: {type: Number, default: 0},
+		likes: {type: Number, default: 0},
+		photo_views: {type: Number, default: 0},
+		followers: {type: Number, default: 0}
+	}
 });
 
 usersSchema.methods.isValidPassword = function isValidPassword(password){
@@ -30,6 +37,7 @@ usersSchema.methods.toAuthJSON = function toAuthJSON() {
 	return {
 		user_id: this._id,
 		photo: this.photo,
+		profileBigPicture: this.profileBigPicture,
 		firstname: this.firstname,
 		surname: this.surname,
 		email: this.email,

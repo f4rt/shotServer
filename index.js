@@ -31,15 +31,22 @@ app.post('/api/auth', (req, res) => {
 
 app.post('/api/signup', (req, res) => {
 	const {credentials} = req.body;
-	bcrypt.hash(credentials.password, 10).then(pas => {
-		Users.create({
-			photo: credentials.photo,
-			firstname: credentials.firstname,
-			surname: credentials.surname,
-			email: credentials.email,
-			passwordHash: pas
-		}).then(res.status(200))
+	Users.findOne({email: credentials.email}).then((user) => {
+		if(user) {
+			res.status(400).json({errors: {global: "This email is already registered"}});
+		} else {
+				bcrypt.hash(credentials.password, 10).then(pas => {
+				Users.create({
+					photo: credentials.photo,
+					firstname: credentials.firstname,
+					surname: credentials.surname,
+					email: credentials.email,
+					passwordHash: pas
+				}).then(res.status(200))
+			})
+		}
 	})
+	
 })
 
 app.post('/api/checkauth', (req, res) => {
@@ -52,9 +59,9 @@ app.post('/api/checkauth', (req, res) => {
 					data.toAuthJSON()
 				)
 			}
-		}, () => res.send({token: ''}))
+		}, () => res.json({token: ''}))
 	} else {
-			res.send({token: ''})
+			res.json({token: ''})
 	}
 })
 
@@ -103,29 +110,31 @@ app.post('/api/upload', (req, res) => {
 		category: data.category,
 		keywords: data.keywords,
 		description: data.description,
-		likes: 0,
-		comments: []
 	}).then(item => LikesComments.create({
 		photo_id: item._id
-	})).then(res.send('Your photo has been uploaded'))
+	})).then(res.send('Success'))
 })
 
 app.post('/api/likephoto', (req, res) => {
 	const {data} = req.body;
-	LikesComments.findOneAndUpdate({photo_id: data.photo_id}, {$inc: {likes: 1}}, (err, item) => {
+	LikesComments.findOneAndUpdate({photo_id: data.photo_id}, {$inc: {likes: 1}}, (err) => {
 		if(err) 
 			console.log('Something went wrong with photo Id')
-	}).then(
-		Users.findOneAndUpdate({_id: data.user_id}, {$push: {liked_photos: data.photo_id}}, (err, item) => {
-			if(err) 
-				console.log('Something went wrong with user Id')
-		})).then(res.status(200).send('Liked'));	
+	});
+	Users.findOneAndUpdate({_id: data.author_id}, {$inc: {'counts.likes': 1}}, (err) => {
+		if(err)
+			console.log('I hate this')
+	})
+	Users.findOneAndUpdate({_id: data.user_id}, {$push: {liked_photos: data.photo_id}}, (err) => {
+		if(err) 
+			console.log('Something went wrong with user Id')
+	}).then(res.status(200).send('Liked'));
 })
 
 app.post('/api/addcomment', (req, res) => {
 	const {data} = req.body;
 	let comment = {
-		user_id: data.user_id, 
+		user_id: data.user_id,
 		user_photo: data.user_photo,
 		username: data.username,
 		comment: data.comment,
@@ -142,10 +151,13 @@ app.post('/api/addcomment', (req, res) => {
 // GET PHOTOS OR INFORMATION
 
 app.post('/api/getLikesAndComments', (req, res) => {
-	const {photo_id} = req.body;
-	LikesComments.findOne({photo_id: photo_id}).then(data => {
-		res.json(data)
-	})
+	const {data} = req.body;
+	let date = new Date;
+	LikesComments.findOne({photo_id: data.photo_id}).then(data => {
+		res.json({data: data, date: date})
+	}).then(() => 
+		Users.findOneAndUpdate({_id: data.author_id}, {$inc: {'counts.photo_views': 1}})	
+	)
 })
 
 app.post ('/allphotos', (req, res) => {
@@ -154,9 +166,42 @@ app.post ('/allphotos', (req, res) => {
 	})
 });
 
-app.post ('/api/getdate', (req, res) => {
-	let date = new Date;
-	res.json(date)
+// PROFILE API
+
+app.post ('/api/profile', (req, res) => {
+	const {id} = req.body;
+	Users.findOne({_id: id}).then(user => {
+		res.status(200).json({
+			userFirstname: user.firstname,
+			userSurname: user.surname,
+			profileBigPicture: user.profileBigPicture,
+			userPhoto: user.photo,
+			userCounts: {
+				likes: user.counts.likes,
+				photoViews: user.counts.photo_views
+			}
+		})
+	})
+})
+
+app.post ('/api/get-user-photos', (req, res) => {
+	const {id} = req.body;
+	Allphotos.find({author_id: id}).then(photos => {
+		res.status(200).json(photos)
+	})
+})
+
+app.post ('/api/profile/edit', (req, res) => {
+	const {data} = req.body;
+	Users.findOneAndUpdate(
+		{_id: data.id}, 
+		{
+			firstname: data.firstname,
+			surname: data.surname,
+			photo: data.userPhoto,
+			profileBigPicture: data.profileBigPicture
+		}
+	).then((err) => !err && res.send('Data has been updated'))
 })
 
 app.listen (5000, () => console.log ('Working!!'))

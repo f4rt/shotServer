@@ -9,7 +9,9 @@ const allphotosSchema = new Schema({
 	category: {type: String, lowercase: true},
 	keywords: {type: Array, required: true},
 	description: {type: String, lowercase: true},
-	date: {type: Date, default: Date.now}
+	date: {type: Date, default: Date.now},
+	comments: {type: Array, default: []},
+	likes: {type: Number, default: 0}
 });
 
 const Allphotos = mongoose.model('allphotos', allphotosSchema);
