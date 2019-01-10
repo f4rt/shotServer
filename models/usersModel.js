@@ -11,6 +11,7 @@ const usersSchema = new Schema({
 	passwordHash: {type: String, required: true},
 	liked_photos: {type: Array, default: []},
 	collections: {type: Array, default: []},
+	commentedPhotos: {type: Array, default: []},
 	counts: {
 		photos: {type: Number, default: 0},
 		likes: {type: Number, default: 0},

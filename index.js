@@ -145,7 +145,11 @@ app.post('/api/addcomment', (req, res) => {
 			console.log('Something went wrong with adding comment')
 		else
 			res.status(200).send('Comment added')
-	})
+	});
+	Users.findOneAndUpdate({_id: data.user_id}, { $push: {commentedPhotos: data.photo_id}}, (err) => {
+		if(err)
+			console.log('Fucking promise, i hate it')
+	});
 })
 
 // GET PHOTOS OR INFORMATION
@@ -162,7 +166,28 @@ app.post('/api/getLikesAndComments', (req, res) => {
 
 app.post ('/allphotos', (req, res) => {
 	Allphotos.find({}).then(items => {
-		res.json(items.reverse())
+		itemsWithUserData(items, res)
+		// let uploadersData = [];
+		// let usersIds = [];
+		// for (let i = 0; i < items.length; i++) {
+		// 	usersIds.push(items[i].author_id)
+		// }
+		// Users.find({_id: usersIds}).then(uploaders => {
+		// 	for (let i = 0; i < uploaders.length; i++) {
+		// 		uploadersData.push({
+		// 			id: uploaders[i]._id,
+		// 			photo: uploaders[i].photo,
+		// 			name: uploaders[i].firstname + ' ' + uploaders[i].surname
+		// 		})
+		// 	}
+		// 	// res.json({
+		// 	// 	photos: items,
+		// 	// 	uploadersData: uploaders
+		// 	// })
+		// 	console.log(usersIds)
+		// })
+
+		// res.json(items.reverse())
 	})
 });
 
@@ -201,7 +226,34 @@ app.post ('/api/profile/edit', (req, res) => {
 			photo: data.userPhoto,
 			profileBigPicture: data.profileBigPicture
 		}
-	).then((err) => !err && res.send('Data has been updated'))
+	)
+	.then(() => Allphotos.updateMany({author_id: data.id}, {
+		author_name: data.firstname + ' ' + data.surname,
+		author_photo: data.userPhoto
+	}))
+	.then((err) => !err && res.send('Data has been updated'))
 })
 
 app.listen (5000, () => console.log ('Working!!'))
+
+
+const itemsWithUserData = (items, res) => {
+	let uploadersData = [];
+	let usersIds = [];
+	for (let i = 0; i < items.length; i++) {
+		usersIds.push(items[i].author_id)
+	}
+	Users.find({_id: usersIds}).then(uploaders => {
+		for (let i = 0; i < uploaders.length; i++) {
+			uploadersData.push({
+				id: uploaders[i]._id,
+				photo: uploaders[i].photo,
+				name: uploaders[i].firstname + ' ' + uploaders[i].surname
+			})
+		}
+		res.json({
+			items: items,
+			authorsData: uploadersData
+		})
+	})
+}
